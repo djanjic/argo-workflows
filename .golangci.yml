@@ -48,8 +48,6 @@ linters:
         - "-ST1005"
         # Receiver names
         - "-ST1016"
-    govet:
-      enable: [nilness]
   exclusions:
     generated: lax
     presets:

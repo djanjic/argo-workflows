@@ -32,8 +32,7 @@ import (
 )
 
 const (
-	podResyncPeriod    = 30 * time.Minute
-	podPaginationLimit = 500
+	podResyncPeriod = 30 * time.Minute
 )
 
 var (
@@ -290,22 +289,7 @@ func newWorkflowPodWatch(ctx context.Context, clientSet kubernetes.Interface, in
 
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.LabelSelector = labelSelector.String()
-		var allPods []apiv1.Pod
-		continueTok := ""
-		options.Limit = podPaginationLimit
-		for {
-			options.Continue = continueTok
-			podList, err := c.List(ctx, options)
-			if err != nil {
-				return nil, err
-			}
-			allPods = append(allPods, podList.Items...)
-			if podList.Continue == "" {
-				break
-			}
-			continueTok = podList.Continue
-		}
-		return &apiv1.PodList{Items: allPods}, nil
+		return c.List(ctx, options)
 	}
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.Watch = true
