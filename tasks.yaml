@@ -42,7 +42,7 @@ spec:
         - ARGO_NAMESPACE=argo
         - ARGO_NAMESPACED=true
         - ARGO_MANAGED_NAMESPACE=argo
-        - ARGO_LOGLEVEL=info
+        - ARGO_LOG_LEVEL=info
         - ARGO_REMOVE_PVC_PROTECTION_FINALIZER=true
         - ARGO_PROGRESS_PATCH_TICK_DURATION=7s
         - DEFAULT_REQUEUE_TIME=1s
@@ -68,7 +68,7 @@ spec:
         - ARGO_SECURE=false
         - ARGO_NAMESPACE=argo
         - ARGO_NAMESPACED=true
-        - ARGO_LOGLEVEL=info
+        - ARGO_LOG_LEVEL=info
         - ARGO_AUTH_MODE=hybrid
         - ARGO_MANAGED_NAMESPACE=argo
         - UPPERIO_DB_DEBUG=1
