@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/argoproj/pkg/file"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/googleapi"
@@ -20,7 +21,6 @@ import (
 	"github.com/argoproj/argo-workflows/v3/errors"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	errutil "github.com/argoproj/argo-workflows/v3/util/errors"
-	"github.com/argoproj/argo-workflows/v3/util/file"
 	waitutil "github.com/argoproj/argo-workflows/v3/util/wait"
 	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
 )
@@ -67,9 +67,9 @@ func isTransientGCSErr(err error) bool {
 	return false
 }
 
-func (h *ArtifactDriver) newGCSClient() (*storage.Client, error) {
-	if h.ServiceAccountKey != "" {
-		return newGCSClientWithCredential(h.ServiceAccountKey)
+func (g *ArtifactDriver) newGCSClient() (*storage.Client, error) {
+	if g.ServiceAccountKey != "" {
+		return newGCSClientWithCredential(g.ServiceAccountKey)
 	}
 	// Assume it uses Workload Identity
 	return newGCSClientDefault()
@@ -98,12 +98,12 @@ func newGCSClientDefault() (*storage.Client, error) {
 }
 
 // Load function downloads objects from GCS
-func (h *ArtifactDriver) Load(inputArtifact *wfv1.Artifact, path string) error {
+func (g *ArtifactDriver) Load(inputArtifact *wfv1.Artifact, path string) error {
 	err := waitutil.Backoff(defaultRetry,
 		func() (bool, error) {
 			key := filepath.Clean(inputArtifact.GCS.Key)
 			log.Infof("GCS Load path: %s, key: %s", path, key)
-			gcsClient, err := h.newGCSClient()
+			gcsClient, err := g.newGCSClient()
 			if err != nil {
 				log.Warnf("Failed to create new GCS client: %v", err)
 				return !isTransientGCSErr(err), err
@@ -196,11 +196,6 @@ func listByPrefix(client *storage.Client, bucket, prefix, delim string) ([]strin
 		if err != nil {
 			return nil, err
 		}
-		// prefix is a file
-		if attrs.Name == prefix {
-			results = []string{attrs.Name}
-			return results, nil
-		}
 		// skip "folder" path like objects
 		// note that we still download content (including "subfolders")
 		// this is just a consequence of how objects are stored in GCS (no real hierarchy)
@@ -212,18 +207,18 @@ func listByPrefix(client *storage.Client, bucket, prefix, delim string) ([]strin
 	return results, nil
 }
 
-func (h *ArtifactDriver) OpenStream(a *wfv1.Artifact) (io.ReadCloser, error) {
+func (g *ArtifactDriver) OpenStream(a *wfv1.Artifact) (io.ReadCloser, error) {
 	// todo: this is a temporary implementation which loads file to disk first
-	return common.LoadToStream(a, h)
+	return common.LoadToStream(a, g)
 }
 
 // Save an artifact to GCS compliant storage, e.g., uploading a local file to GCS bucket
-func (h *ArtifactDriver) Save(path string, outputArtifact *wfv1.Artifact) error {
+func (g *ArtifactDriver) Save(path string, outputArtifact *wfv1.Artifact) error {
 	err := waitutil.Backoff(defaultRetry,
 		func() (bool, error) {
 			key := filepath.Clean(outputArtifact.GCS.Key)
 			log.Infof("GCS Save path: %s, key: %s", path, key)
-			client, err := h.newGCSClient()
+			client, err := g.newGCSClient()
 			if err != nil {
 				return !isTransientGCSErr(err), err
 			}
@@ -348,12 +343,12 @@ func (h *ArtifactDriver) Delete(s *wfv1.Artifact) error {
 	return err
 }
 
-func (h *ArtifactDriver) ListObjects(artifact *wfv1.Artifact) ([]string, error) {
+func (g *ArtifactDriver) ListObjects(artifact *wfv1.Artifact) ([]string, error) {
 	var files []string
 	err := waitutil.Backoff(defaultRetry,
 		func() (bool, error) {
 			log.Infof("GCS List bucket: %s, key: %s", artifact.GCS.Bucket, artifact.GCS.Key)
-			client, err := h.newGCSClient()
+			client, err := g.newGCSClient()
 			if err != nil {
 				log.Warnf("Failed to create new GCS client: %v", err)
 				return !isTransientGCSErr(err), err
@@ -368,6 +363,6 @@ func (h *ArtifactDriver) ListObjects(artifact *wfv1.Artifact) ([]string, error) 
 	return files, err
 }
 
-func (h *ArtifactDriver) IsDirectory(artifact *wfv1.Artifact) (bool, error) {
+func (g *ArtifactDriver) IsDirectory(artifact *wfv1.Artifact) (bool, error) {
 	return false, errors.New(errors.CodeNotImplemented, "IsDirectory currently unimplemented for GCS")
 }

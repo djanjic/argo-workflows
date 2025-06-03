@@ -16,6 +16,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/argoproj/pkg/humanize"
+	argokubeerr "github.com/argoproj/pkg/kube/errors"
+	"github.com/argoproj/pkg/strftime"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/expr-lang/expr"
 	log "github.com/sirupsen/logrus"
@@ -43,14 +46,11 @@ import (
 	"github.com/argoproj/argo-workflows/v3/util/expr/argoexpr"
 	"github.com/argoproj/argo-workflows/v3/util/expr/env"
 	"github.com/argoproj/argo-workflows/v3/util/help"
-	"github.com/argoproj/argo-workflows/v3/util/humanize"
 	"github.com/argoproj/argo-workflows/v3/util/intstr"
-	argokubeerr "github.com/argoproj/argo-workflows/v3/util/kube/errors"
 	"github.com/argoproj/argo-workflows/v3/util/resource"
 	"github.com/argoproj/argo-workflows/v3/util/retry"
 	argoruntime "github.com/argoproj/argo-workflows/v3/util/runtime"
 	"github.com/argoproj/argo-workflows/v3/util/secrets"
-	"github.com/argoproj/argo-workflows/v3/util/strftime"
 	"github.com/argoproj/argo-workflows/v3/util/template"
 	waitutil "github.com/argoproj/argo-workflows/v3/util/wait"
 	"github.com/argoproj/argo-workflows/v3/workflow/common"
@@ -955,7 +955,7 @@ func (woc *wfOperationCtx) requeue() {
 
 // processNodeRetries updates the retry node state based on the child node state and the retry strategy and returns the node.
 func (woc *wfOperationCtx) processNodeRetries(node *wfv1.NodeStatus, retryStrategy wfv1.RetryStrategy, opts *executeTemplateOpts) (*wfv1.NodeStatus, bool, error) {
-	if node.Phase.Fulfilled() {
+	if node.Fulfilled() {
 		return node, true, nil
 	}
 
@@ -968,19 +968,8 @@ func (woc *wfOperationCtx) processNodeRetries(node *wfv1.NodeStatus, retryStrate
 		return node, true, nil
 	}
 
-	if lastChildNode.IsDaemoned() {
-		node.Daemoned = ptr.To(true)
-	}
-
-	if !lastChildNode.Phase.Fulfilled() {
-		if !lastChildNode.IsDaemoned() {
-			return node, true, nil
-		}
+	if !lastChildNode.Fulfilled() {
 		// last child node is still running.
-		node = woc.markNodePhase(node.Name, lastChildNode.Phase)
-		if lastChildNode.IsDaemoned() { // markNodePhase doesn't pass the Daemoned field
-			node.Daemoned = ptr.To(true)
-		}
 		return node, true, nil
 	}
 
@@ -1040,15 +1029,6 @@ func (woc *wfOperationCtx) processNodeRetries(node *wfv1.NodeStatus, retryStrate
 			// Note that timeToWait should equal to duration for the first retry attempt.
 			timeToWait = baseDuration * time.Duration(math.Pow(float64(*retryStrategyBackoffFactor), float64(len(childNodeIds)-1)))
 		}
-		if retryStrategy.Backoff.Cap != "" {
-			capDuration, err := wfv1.ParseStringToDuration(retryStrategy.Backoff.Cap)
-			if err != nil {
-				return nil, false, err
-			}
-			if timeToWait > capDuration {
-				timeToWait = capDuration
-			}
-		}
 		waitingDeadline := lastChildNode.FinishedAt.Add(timeToWait)
 
 		// If the waiting deadline is after the max duration deadline, then it's futile to wait until then. Stop early
@@ -1092,7 +1072,7 @@ func (woc *wfOperationCtx) processNodeRetries(node *wfv1.NodeStatus, retryStrate
 	}
 	woc.log.Infof("Retry Policy: %s (onFailed: %v, onError %v)", retryStrategy.RetryPolicyActual(), retryOnFailed, retryOnError)
 
-	if ((lastChildNode.Phase == wfv1.NodeFailed || lastChildNode.IsDaemoned() && (lastChildNode.Phase == wfv1.NodeSucceeded)) && !retryOnFailed) || (lastChildNode.Phase == wfv1.NodeError && !retryOnError) {
+	if (lastChildNode.Phase == wfv1.NodeFailed && !retryOnFailed) || (lastChildNode.Phase == wfv1.NodeError && !retryOnError) {
 		woc.log.Infof("Node not set to be retried after status: %s", lastChildNode.Phase)
 		return woc.markNodePhase(node.Name, lastChildNode.Phase, lastChildNode.Message), true, nil
 	}
@@ -1386,21 +1366,17 @@ func (woc *wfOperationCtx) assessNodeStatus(ctx context.Context, pod *apiv1.Pod,
 			woc.controller.metrics.ChangePodPending(ctx, new.Message, pod.Namespace)
 		}
 	case apiv1.PodSucceeded:
-		// if the pod is succeeded, we need to check if it is a daemoned step or not
-		// if it is daemoned, we need to mark it as failed, since daemon pods should run indefinitely
-		if tmpl.IsDaemon() {
-			woc.log.Debugf("Daemoned pod %s succeeded. Marking it as failed", pod.Name)
-			new.Phase = wfv1.NodeFailed
-		} else {
-			new.Phase = wfv1.NodeSucceeded
-		}
-
+		new.Phase = wfv1.NodeSucceeded
 		new.Daemoned = nil
 	case apiv1.PodFailed:
 		// ignore pod failure for daemoned steps
-		new.Phase, new.Message = woc.inferFailedReason(pod, tmpl)
-		woc.log.WithField("displayName", old.DisplayName).WithField("templateName", wfutil.GetTemplateFromNode(*old)).
-			WithField("pod", pod.Name).Infof("Pod failed: %s", new.Message)
+		if tmpl != nil && tmpl.IsDaemon() {
+			new.Phase = wfv1.NodeSucceeded
+		} else {
+			new.Phase, new.Message = woc.inferFailedReason(pod, tmpl)
+			woc.log.WithField("displayName", old.DisplayName).WithField("templateName", wfutil.GetTemplateFromNode(*old)).
+				WithField("pod", pod.Name).Infof("Pod failed: %s", new.Message)
+		}
 		new.Daemoned = nil
 	case apiv1.PodRunning:
 		// Daemons are a special case we need to understand the rules:
@@ -1445,7 +1421,7 @@ func (woc *wfOperationCtx) assessNodeStatus(ctx context.Context, pod *apiv1.Pod,
 		switch {
 		case c.State.Terminated != nil:
 			exitCode := int(c.State.Terminated.ExitCode)
-			message := fmt.Sprintf("%s: %s (exit code %d): %s", c.Name, c.State.Terminated.Reason, exitCode, c.State.Terminated.Message)
+			message := fmt.Sprintf("%s (exit code %d): %s", c.State.Terminated.Reason, exitCode, c.State.Terminated.Message)
 			switch exitCode {
 			case 0:
 				woc.markNodePhase(ctrNodeName, wfv1.NodeSucceeded)
@@ -1484,6 +1460,14 @@ func (woc *wfOperationCtx) assessNodeStatus(ctx context.Context, pod *apiv1.Pod,
 			new.Outputs = &wfv1.Outputs{}
 		}
 		new.Outputs.ExitCode = ptr.To(fmt.Sprint(*exitCode))
+	}
+
+	for _, c := range pod.Status.InitContainerStatuses {
+		if c.State.Terminated != nil && int(c.State.Terminated.ExitCode) != 0 {
+			new.Phase = wfv1.NodeFailed
+			woc.log.WithField("new.phase", new.Phase).Info("marking node as failed since init container has non-zero exit code")
+			break
+		}
 	}
 
 	waitContainerCleanedUp := true
@@ -1533,11 +1517,11 @@ func (woc *wfOperationCtx) assessNodeStatus(ctx context.Context, pod *apiv1.Pod,
 			WithField("new.message", new.Message).
 			WithField("old.progress", old.Progress).
 			WithField("new.progress", new.Progress).
-			Debug("node changed")
+			Info("node changed")
 		return new
 	}
 	woc.log.WithField("nodeID", old.ID).
-		Debug("node unchanged")
+		Info("node unchanged")
 	return nil
 }
 
@@ -1666,7 +1650,6 @@ func (woc *wfOperationCtx) inferFailedReason(pod *apiv1.Pod, tmpl *wfv1.Template
 		if t.Message != "" {
 			msg = fmt.Sprintf("%s: %s", msg, t.Message)
 		}
-		msg = fmt.Sprintf("%s: %s", ctr.Name, msg)
 
 		switch {
 		case ctr.Name == common.InitContainerName:
@@ -1933,12 +1916,6 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 		woc.log.Warnf("Node was nil, will be initialized as type Skipped")
 	}
 
-	if node != nil {
-		if node.DisplayName == "dependencyTesting" {
-			woc.log.Debugf("Node %s already exists, will be updated", nodeName)
-		}
-	}
-
 	woc.currentStackDepth++
 	defer func() { woc.currentStackDepth-- }()
 
@@ -1980,17 +1957,6 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 	processedTmpl, err := common.ProcessArgs(resolvedTmpl, &args, woc.globalParams, localParams, false, woc.wf.Namespace, woc.controller.configMapInformer.GetIndexer())
 	if err != nil {
 		return woc.initializeNodeOrMarkError(node, nodeName, templateScope, orgTmpl, opts.boundaryID, opts.nodeFlag, err), err
-	}
-
-	// Update displayName from processedTmpl
-	if displayName := processedTmpl.GetDisplayName(); node != nil && displayName != "" {
-		if !displayNameRegex.MatchString(displayName) {
-			err = fmt.Errorf("displayName must match the regex %s", displayNameRegex.String())
-			return woc.initializeNodeOrMarkError(node, nodeName, templateScope, orgTmpl, opts.boundaryID, opts.nodeFlag, err), err
-		}
-
-		woc.log.Debugf("Updating node %s display name to %s", node.DisplayName, displayName)
-		woc.setNodeDisplayName(node, displayName)
 	}
 
 	// Check if this is a fulfilled node for synchronization.
@@ -2158,7 +2124,7 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 		childNodeIDs, lastChildNode := getChildNodeIdsAndLastRetriedNode(retryParentNode, woc.wf.Status.Nodes)
 
 		// The retry node might have completed by now.
-		if retryParentNode.Fulfilled() && woc.childrenFulfilled(retryParentNode) { // if retry node is daemoned we want to check those explicitly
+		if retryParentNode.Fulfilled() {
 			// If retry node has completed, set the output of the last child node to its output.
 			// Runtime parameters (e.g., `status`, `resourceDuration`) in the output will be used to emit metrics.
 			if lastChildNode != nil {
@@ -2191,7 +2157,7 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 		}
 
 		var retryNum int
-		if lastChildNode != nil && !lastChildNode.Phase.Fulfilled() {
+		if lastChildNode != nil && !lastChildNode.Fulfilled() {
 			// Last child node is either still running, or in some cases the corresponding Pod hasn't even been
 			// created yet, for example if it exceeded the ResourceQuota
 			nodeName = lastChildNode.Name
@@ -2213,23 +2179,6 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 		// Inject the retryAttempt number
 		localParams[common.LocalVarRetries] = strconv.Itoa(retryNum)
 
-		// Inject lastRetry variables
-		// the first node will not have "lastRetry" variables so they must have default values
-		// for the expression to resolve
-		lastRetryExitCode, lastRetryDuration := "0", "0"
-		var lastRetryStatus, lastRetryMessage string
-		if lastChildNode != nil {
-			if lastChildNode.Outputs != nil && lastChildNode.Outputs.ExitCode != nil {
-				lastRetryExitCode = *lastChildNode.Outputs.ExitCode
-			}
-			lastRetryStatus = string(lastChildNode.Phase)
-			lastRetryDuration = fmt.Sprint(lastChildNode.GetDuration().Seconds())
-			lastRetryMessage = lastChildNode.Message
-		}
-		localParams[common.LocalVarRetriesLastExitCode] = lastRetryExitCode
-		localParams[common.LocalVarRetriesLastDuration] = lastRetryDuration
-		localParams[common.LocalVarRetriesLastStatus] = lastRetryStatus
-		localParams[common.LocalVarRetriesLastMessage] = lastRetryMessage
 		processedTmpl, err = common.SubstituteParams(processedTmpl, woc.globalParams, localParams)
 		if errorsutil.IsTransientErr(err) {
 			return node, err
@@ -2311,17 +2260,10 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 			return node, err
 		}
 
-		if !retryNode.Phase.Fulfilled() && node.Phase.Fulfilled() { // if the retry child has completed we need to update the parent's status
+		if !retryNode.Fulfilled() && node.Fulfilled() { // if the retry child has completed we need to update outself
 			retryNode, err = woc.executeTemplate(ctx, retryNodeName, orgTmpl, tmplCtx, args, opts)
 			if err != nil {
 				return woc.markNodeError(node.Name, err), err
-			}
-		}
-
-		if !node.Phase.Fulfilled() && node.IsDaemoned() {
-			retryNode = woc.markNodePhase(retryNodeName, node.Phase)
-			if node.IsDaemoned() { // markNodePhase doesn't pass the Daemoned field
-				retryNode.Daemoned = ptr.To(true)
 			}
 		}
 		node = retryNode
@@ -2353,7 +2295,7 @@ func (woc *wfOperationCtx) executeTemplate(ctx context.Context, nodeName string,
 }
 
 func (woc *wfOperationCtx) handleNodeFulfilled(ctx context.Context, nodeName string, node *wfv1.NodeStatus, processedTmpl *wfv1.Template) *wfv1.NodeStatus {
-	if node == nil || !node.Phase.Fulfilled() {
+	if node == nil || !node.Fulfilled() {
 		return nil
 	}
 
@@ -2527,23 +2469,6 @@ func (woc *wfOperationCtx) hasDaemonNodes() bool {
 	return false
 }
 
-// check if all of the nodes children are fulffilled
-func (woc *wfOperationCtx) childrenFulfilled(node *wfv1.NodeStatus) bool {
-	if len(node.Children) == 0 {
-		return node.Fulfilled()
-	}
-	for _, childID := range node.Children {
-		childNode, err := woc.wf.Status.Nodes.Get(childID)
-		if err != nil {
-			continue
-		}
-		if !woc.childrenFulfilled(childNode) {
-			return false
-		}
-	}
-	return true
-}
-
 func (woc *wfOperationCtx) GetNodeTemplate(node *wfv1.NodeStatus) (*wfv1.Template, error) {
 	if node.TemplateRef != nil {
 		tmplCtx, err := woc.createTemplateContext(node.GetTemplateScope())
@@ -2580,7 +2505,6 @@ func (woc *wfOperationCtx) markWorkflowError(ctx context.Context, err error) {
 // stepsOrDagSeparator identifies if a node name starts with our naming convention separator from
 // DAG or steps templates. Will match stings with prefix like: [0]. or .
 var stepsOrDagSeparator = regexp.MustCompile(`^(\[\d+\])?\.`)
-var displayNameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9-.]{0,61}[a-zA-Z0-9]$`)
 
 // initializeExecutableNode initializes a node and stores the template.
 func (woc *wfOperationCtx) initializeExecutableNode(nodeName string, nodeType wfv1.NodeType, templateScope string, executeTmpl *wfv1.Template, orgTmpl wfv1.TemplateReferenceHolder, boundaryID string, phase wfv1.NodePhase, nodeFlag *wfv1.NodeFlag, messages ...string) *wfv1.NodeStatus {
@@ -3290,8 +3214,7 @@ func (n loopNodes) Len() int {
 }
 
 func parseLoopIndex(s string) int {
-	splits := strings.Split(s, "(")
-	s = splits[len(splits)-1]
+	s = strings.SplitN(s, "(", 2)[1]
 	s = strings.SplitN(s, ":", 2)[0]
 	val, err := strconv.Atoi(s)
 	if err != nil {
@@ -3301,8 +3224,8 @@ func parseLoopIndex(s string) int {
 }
 
 func (n loopNodes) Less(i, j int) bool {
-	left := parseLoopIndex(n[i].Name)
-	right := parseLoopIndex(n[j].Name)
+	left := parseLoopIndex(n[i].DisplayName)
+	right := parseLoopIndex(n[j].DisplayName)
 	return left < right
 }
 
@@ -3331,7 +3254,7 @@ func (woc *wfOperationCtx) processAggregateNodeOutputs(scope *wfScope, prefix st
 	outputParamValueLists := make(map[string][]string)
 	resultsList := make([]wfv1.Item, 0)
 	for _, node := range childNodes {
-		if node.Outputs == nil || node.Phase != wfv1.NodeSucceeded {
+		if node.Outputs == nil || node.Phase != wfv1.NodeSucceeded || node.Type == wfv1.NodeTypeRetry {
 			continue
 		}
 		if len(node.Outputs.Parameters) > 0 {
@@ -3371,20 +3294,20 @@ func (woc *wfOperationCtx) processAggregateNodeOutputs(scope *wfScope, prefix st
 	// Adding per-output aggregated value placeholders
 	for outputName, valueList := range outputParamValueLists {
 		key = fmt.Sprintf("%s.outputs.parameters.%s", prefix, outputName)
-		valueListJSON, err := aggregatedJSONValueList(valueList)
+		valueListJson, err := aggregatedJsonValueList(valueList)
 		if err != nil {
 			return err
 		}
-		scope.addParamToScope(key, valueListJSON)
+		scope.addParamToScope(key, valueListJson)
 	}
 	return nil
 }
 
-// tryJSONUnmarshal unmarshals each item in the list assuming it is
+// tryJsonUnmarshal unmarshals each item in the list assuming it is
 // JSON and NOT a plain JSON value.
 // If returns success only if all items can be unmarshalled and are either
 // maps or lists
-func tryJSONUnmarshal(valueList []string) ([]interface{}, bool) {
+func tryJsonUnmarshal(valueList []string) ([]interface{}, bool) {
 	success := true
 	var list []interface{}
 	for _, value := range valueList {
@@ -3410,11 +3333,11 @@ func tryJSONUnmarshal(valueList []string) ([]interface{}, bool) {
 	return list, success
 }
 
-// aggregatedJSONValueList returns a string containing a JSON list, holding
+// aggregatedJsonValueList returns a string containing a JSON list, holding
 // all of the values from the valueList.
-// It tries to understand what's wanted from  inner JSON using tryJSONUnmarshal
-func aggregatedJSONValueList(valueList []string) (string, error) {
-	unmarshalledList, success := tryJSONUnmarshal(valueList)
+// It tries to understand what's wanted from  inner JSON using tryJsonUnmarshall
+func aggregatedJsonValueList(valueList []string) (string, error) {
+	unmarshalledList, success := tryJsonUnmarshal(valueList)
 	var valueListJSON []byte
 	var err error
 	if success {
@@ -3893,26 +3816,26 @@ func (woc *wfOperationCtx) computeMetrics(ctx context.Context, metricList []*wfv
 			// Finally substitute value parameters
 			metricValueString := metricSpec.GetValueString()
 
-			metricValueStringJSON, err := json.Marshal(metricValueString)
+			metricValueStringJson, err := json.Marshal(metricValueString)
 			if err != nil {
 				woc.reportMetricEmissionError(fmt.Sprintf("unable to marshal metric to JSON for templating '%s': %s", metricSpec.Name, err))
 				continue
 			}
 
-			replacedValueJSON, err := template.Replace(string(metricValueStringJSON), localScope, false)
+			replacedValueJson, err := template.Replace(string(metricValueStringJson), localScope, false)
 			if err != nil {
 				woc.reportMetricEmissionError(fmt.Sprintf("unable to substitute parameters for metric '%s': %s", metricSpec.Name, err))
 				continue
 			}
 
-			var replacedStringJSON string
-			err = json.Unmarshal([]byte(replacedValueJSON), &replacedStringJSON)
+			var replacedStringJson string
+			err = json.Unmarshal([]byte(replacedValueJson), &replacedStringJson)
 			if err != nil {
 				woc.reportMetricEmissionError(fmt.Sprintf("unable to unmarshal templated metric JSON '%s': %s", metricSpec.Name, err))
 				continue
 			}
 
-			metricSpec.SetValueString(replacedStringJSON)
+			metricSpec.SetValueString(replacedStringJson)
 
 			err = woc.controller.metrics.UpsertCustomMetric(ctx, metricSpec, string(woc.wf.UID), nil)
 			if err != nil {
@@ -4073,7 +3996,7 @@ func (woc *wfOperationCtx) setExecWorkflow(ctx context.Context) error {
 		// Validate the execution wfSpec
 		err := waitutil.Backoff(retry.DefaultRetry,
 			func() (bool, error) {
-				validationErr := validate.ValidateWorkflow(wftmplGetter, cwftmplGetter, woc.wf, woc.controller.Config.WorkflowDefaults, validateOpts)
+				validationErr := validate.ValidateWorkflow(wftmplGetter, cwftmplGetter, woc.wf, validateOpts)
 				if validationErr != nil {
 					return !errorsutil.IsTransientErr(validationErr), validationErr
 				}
@@ -4183,17 +4106,17 @@ func (woc *wfOperationCtx) mergedTemplateDefaultsInto(originalTmpl *wfv1.Templat
 	if woc.execWf.Spec.TemplateDefaults != nil {
 		originalTmplType := originalTmpl.GetType()
 
-		tmplDefaultsJSON, err := json.Marshal(woc.execWf.Spec.TemplateDefaults)
+		tmplDefaultsJson, err := json.Marshal(woc.execWf.Spec.TemplateDefaults)
 		if err != nil {
 			return err
 		}
 
-		targetTmplJSON, err := json.Marshal(originalTmpl)
+		targetTmplJson, err := json.Marshal(originalTmpl)
 		if err != nil {
 			return err
 		}
 
-		resultTmpl, err := strategicpatch.StrategicMergePatch(tmplDefaultsJSON, targetTmplJSON, wfv1.Template{})
+		resultTmpl, err := strategicpatch.StrategicMergePatch(tmplDefaultsJson, targetTmplJson, wfv1.Template{})
 		if err != nil {
 			return err
 		}
@@ -4289,11 +4212,4 @@ func getChildNodeIdsRetried(node *wfv1.NodeStatus, nodes wfv1.Nodes) []string {
 		}
 	}
 	return childrenIds
-}
-
-func (woc *wfOperationCtx) setNodeDisplayName(node *wfv1.NodeStatus, displayName string) {
-	nodeID := node.ID
-	newNode := node.DeepCopy()
-	newNode.DisplayName = displayName
-	woc.wf.Status.Nodes.Set(nodeID, *newNode)
 }

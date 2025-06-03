@@ -28,7 +28,7 @@ func (we *WorkflowExecutor) patchTaskResult(ctx context.Context, result wfv1.Nod
 		return err
 	}
 	_, err = we.taskResultClient.Patch(ctx,
-		we.nodeID,
+		we.nodeId,
 		types.MergePatchType,
 		data,
 		metav1.PatchOptions{},
@@ -46,7 +46,7 @@ func (we *WorkflowExecutor) patchTaskResultLabels(ctx context.Context, labels ma
 		return err
 	}
 	_, err = we.taskResultClient.Patch(ctx,
-		we.nodeID,
+		we.nodeId,
 		types.MergePatchType,
 		data,
 		metav1.PatchOptions{},
@@ -61,7 +61,7 @@ func (we *WorkflowExecutor) createTaskResult(ctx context.Context, result wfv1.No
 			Kind:       workflow.WorkflowTaskResultKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: we.nodeID,
+			Name: we.nodeId,
 		},
 		NodeResult: result,
 	}
