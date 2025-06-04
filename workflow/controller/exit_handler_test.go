@@ -702,7 +702,7 @@ func TestDagOnExitAndRetryStrategy(t *testing.T) {
 	assert.Equal(t, wfv1.WorkflowSucceeded, woc.wf.Status.Phase)
 }
 
-var testWorkflowOnExitHTTPReconciliation = `apiVersion: argoproj.io/v1alpha1
+var testWorkflowOnExitHttpReconciliation = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   name: hello-world-sx6lw
@@ -742,7 +742,7 @@ status:
 `
 
 func TestWorkflowOnExitHttpReconciliation(t *testing.T) {
-	wf := wfv1.MustUnmarshalWorkflow(testWorkflowOnExitHTTPReconciliation)
+	wf := wfv1.MustUnmarshalWorkflow(testWorkflowOnExitHttpReconciliation)
 	cancel, controller := newController(wf)
 	defer cancel()
 
@@ -760,7 +760,7 @@ func TestWorkflowOnExitHttpReconciliation(t *testing.T) {
 	assert.Len(t, taskSets.Items, 1)
 }
 
-var testWorkflowOnExitStepsHTTPReconciliation = `apiVersion: argoproj.io/v1alpha1
+var testWorkflowOnExitStepsHttpReconciliation = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   name: hello-world-647r7
@@ -840,7 +840,7 @@ status:
 `
 
 func TestWorkflowOnExitStepsHttpReconciliation(t *testing.T) {
-	wf := wfv1.MustUnmarshalWorkflow(testWorkflowOnExitStepsHTTPReconciliation)
+	wf := wfv1.MustUnmarshalWorkflow(testWorkflowOnExitStepsHttpReconciliation)
 	cancel, controller := newController(wf)
 	defer cancel()
 

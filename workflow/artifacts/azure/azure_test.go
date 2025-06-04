@@ -83,13 +83,13 @@ func TestArtifactDriver_WithSASToken_DownloadDirectory_Subdir(t *testing.T) {
 		Endpoint:   "http://127.0.0.1:10000/devstoreaccount1",
 	}
 
-	containerURL, _ := url.Parse(driver.Endpoint)
-	if len(containerURL.Path) == 0 || containerURL.Path[len(containerURL.Path)-1] != '/' {
-		containerURL.Path += "/"
+	containerUrl, _ := url.Parse(driver.Endpoint)
+	if len(containerUrl.Path) == 0 || containerUrl.Path[len(containerUrl.Path)-1] != '/' {
+		containerUrl.Path += "/"
 	}
-	containerURL.Path += driver.Container
+	containerUrl.Path += driver.Container
 
-	accountName, _ := determineAccountName(containerURL)
+	accountName, _ := determineAccountName(containerUrl)
 	credential, _ := azblob.NewSharedKeyCredential(accountName, driver.AccountKey)
 
 	sasQueryParams, err := sas.BlobSignatureValues{
