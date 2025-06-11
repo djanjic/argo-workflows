@@ -315,6 +315,7 @@ func newController(options ...interface{}) (context.CancelFunc, *WorkflowControl
 		wfc.entrypoint = entrypoint.New(kube, wfc.Config.Images)
 		wfc.wfQueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 		wfc.throttler = wfc.newThrottler()
+		wfc.podCleanupQueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 		wfc.rateLimiter = wfc.newRateLimiter()
 	}
 
@@ -340,7 +341,6 @@ func newController(options ...interface{}) (context.CancelFunc, *WorkflowControl
 		go wfc.taskResultInformer.Run(ctx.Done())
 		wfc.cwftmplInformer = informerFactory.Argoproj().V1alpha1().ClusterWorkflowTemplates()
 		go wfc.cwftmplInformer.Informer().Run(ctx.Done())
-		go wfc.configMapInformer.Run(ctx.Done())
 		// wfc.waitForCacheSync() takes minimum 100ms, we can be faster
 		for _, c := range []cache.SharedIndexInformer{
 			wfc.wfInformer,
@@ -350,7 +350,6 @@ func newController(options ...interface{}) (context.CancelFunc, *WorkflowControl
 			wfc.wfTaskSetInformer.Informer(),
 			wfc.artGCTaskInformer.Informer(),
 			wfc.taskResultInformer,
-			wfc.configMapInformer,
 		} {
 			for !c.HasSynced() {
 				time.Sleep(5 * time.Millisecond)
@@ -454,14 +453,14 @@ type with func(pod *apiv1.Pod, woc *wfOperationCtx)
 
 func withOutputs(outputs wfv1.Outputs) with {
 	return func(pod *apiv1.Pod, woc *wfOperationCtx) {
-		nodeID := woc.nodeID(pod)
+		nodeId := woc.nodeID(pod)
 		taskResult := &wfv1.WorkflowTaskResult{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: workflow.APIVersion,
 				Kind:       workflow.WorkflowTaskResultKind,
 			},
 			ObjectMeta: metav1.ObjectMeta{
-				Name: nodeID,
+				Name: nodeId,
 				Labels: map[string]string{
 					common.LabelKeyWorkflow:               woc.wf.Name,
 					common.LabelKeyReportOutputsCompleted: "true",
@@ -922,10 +921,10 @@ metadata:
 spec:
  entrypoint: whalesay
  synchronization:
-   semaphores:
-     - configMapKeyRef:
-         name: my-config
-         key: workflow
+   semaphore:
+     configMapKeyRef:
+       name: my-config
+       key: workflow
  templates:
  - name: whalesay
    container:
@@ -1304,7 +1303,7 @@ spec:
       - name: main
         resources:
           requests:
-            memory: "{{=(int(retries)+1)*int(inputs.parameters.memreqnum)}}{{inputs.parameters.memrequnit}}"
+            memory: "{{=(sprig.int(retries)+1)*sprig.int(inputs.parameters.memreqnum)}}{{inputs.parameters.memrequnit}}"
     container:
       image: docker/whalesay
       command: [cowsay]

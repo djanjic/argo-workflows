@@ -169,7 +169,7 @@ spec:
       containers:
         - args:
             - server
-          image: quay.io/argoproj/argocli:latest
+          image: argoproj/argocli:latest
           name: argo-server
           env:
             - name: GRPC_MESSAGE_SIZE

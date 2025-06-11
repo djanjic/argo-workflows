@@ -18,7 +18,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	argoerrors "github.com/argoproj/argo-workflows/v3/errors"
-	"github.com/argoproj/argo-workflows/v3/util/file"
+
+	"github.com/argoproj/pkg/file"
 
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	artifactscommon "github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
@@ -39,22 +40,22 @@ var _ artifactscommon.ArtifactDriver = &ArtifactDriver{}
 // for failed requests.
 func (azblobDriver *ArtifactDriver) newAzureContainerClient() (*container.Client, error) {
 
-	containerURL, err := url.Parse(azblobDriver.Endpoint)
+	containerUrl, err := url.Parse(azblobDriver.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse Azure Blob Storage endpoint url %s: %s", azblobDriver.Endpoint, err)
 	}
 	// Append the container name to the URL path
-	if len(containerURL.Path) == 0 || containerURL.Path[len(containerURL.Path)-1] != '/' {
-		containerURL.Path += "/"
+	if len(containerUrl.Path) == 0 || containerUrl.Path[len(containerUrl.Path)-1] != '/' {
+		containerUrl.Path += "/"
 	}
-	containerURL.Path += azblobDriver.Container
+	containerUrl.Path += azblobDriver.Container
 
 	if azblobDriver.UseSDKCreds {
 		credential, err := azidentity.NewDefaultAzureCredential(nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create default Azure credential: %s", err)
 		}
-		containerClient, err := container.NewClient(containerURL.String(), credential, nil)
+		containerClient, err := container.NewClient(containerUrl.String(), credential, nil)
 		return containerClient, err
 	} else {
 		if azblobDriver.AccountKey == "" {
@@ -63,12 +64,12 @@ func (azblobDriver *ArtifactDriver) newAzureContainerClient() (*container.Client
 
 		if isSASAccountKey(azblobDriver.AccountKey) {
 			log.Infof("Provided account key is a SAS token. Using no-credential client.")
-			serviceURL := fmt.Sprintf("%s?%s", containerURL.String(), azblobDriver.AccountKey)
+			serviceURL := fmt.Sprintf("%s?%s", containerUrl.String(), azblobDriver.AccountKey)
 			containerClient, err := container.NewClientWithNoCredential(serviceURL, nil)
 			return containerClient, err
 		}
 
-		accountName, err := determineAccountName(containerURL)
+		accountName, err := determineAccountName(containerUrl)
 		if err != nil {
 			return nil, err
 		}
@@ -76,19 +77,19 @@ func (azblobDriver *ArtifactDriver) newAzureContainerClient() (*container.Client
 		if err != nil {
 			return nil, fmt.Errorf("unable to create Azure shared key credential: %s", err)
 		}
-		containerClient, err := container.NewClientWithSharedKeyCredential(containerURL.String(), credential, nil)
+		containerClient, err := container.NewClientWithSharedKeyCredential(containerUrl.String(), credential, nil)
 		return containerClient, err
 	}
 }
 
 // determineAccountName determines the account name of the storage account based on the
 // supplied container URL.
-func determineAccountName(containerURL *url.URL) (string, error) {
-	hostname := containerURL.Hostname()
+func determineAccountName(containerUrl *url.URL) (string, error) {
+	hostname := containerUrl.Hostname()
 	if strings.HasPrefix(hostname, "127.0.0.1") || strings.HasPrefix(hostname, "localhost") {
-		parts := strings.Split(containerURL.Path, "/")
+		parts := strings.Split(containerUrl.Path, "/")
 		if len(parts) <= 2 {
-			return "", fmt.Errorf("unable to determine storage account name from %s", containerURL)
+			return "", fmt.Errorf("unable to determine storage account name from %s", containerUrl)
 		}
 		return parts[1], nil
 	} else {

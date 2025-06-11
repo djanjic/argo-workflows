@@ -40,7 +40,7 @@ import (
 type Controller struct {
 	namespace            string
 	managedNamespace     string
-	instanceID           string
+	instanceId           string
 	cron                 *cronFacade
 	keyLock              sync.KeyLock
 	wfClientset          versioned.Interface
@@ -48,7 +48,6 @@ type Controller struct {
 	cronWfInformer       informers.GenericInformer
 	wftmplInformer       wfextvv1alpha1.WorkflowTemplateInformer
 	cwftmplInformer      wfextvv1alpha1.ClusterWorkflowTemplateInformer
-	wfDefaults           *v1alpha1.Workflow
 	cronWfQueue          workqueue.TypedRateLimitingInterface[string]
 	dynamicInterface     dynamic.Interface
 	metrics              *metrics.Metrics
@@ -73,18 +72,17 @@ func init() {
 	log.WithField("cronSyncPeriod", cronSyncPeriod).Info("cron config")
 }
 
-func NewCronController(ctx context.Context, wfclientset versioned.Interface, dynamicInterface dynamic.Interface, namespace string, managedNamespace string, instanceID string, metrics *metrics.Metrics,
-	eventRecorderManager events.EventRecorderManager, cronWorkflowWorkers int, wftmplInformer wfextvv1alpha1.WorkflowTemplateInformer, cwftmplInformer wfextvv1alpha1.ClusterWorkflowTemplateInformer, wfDefaults *v1alpha1.Workflow) *Controller {
+func NewCronController(ctx context.Context, wfclientset versioned.Interface, dynamicInterface dynamic.Interface, namespace string, managedNamespace string, instanceId string, metrics *metrics.Metrics,
+	eventRecorderManager events.EventRecorderManager, cronWorkflowWorkers int, wftmplInformer wfextvv1alpha1.WorkflowTemplateInformer, cwftmplInformer wfextvv1alpha1.ClusterWorkflowTemplateInformer) *Controller {
 	return &Controller{
 		wfClientset:          wfclientset,
 		namespace:            namespace,
 		managedNamespace:     managedNamespace,
-		instanceID:           instanceID,
+		instanceId:           instanceId,
 		cron:                 newCronFacade(),
 		keyLock:              sync.NewKeyLock(),
 		dynamicInterface:     dynamicInterface,
 		cronWfQueue:          metrics.RateLimiterWithBusyWorkers(ctx, workqueue.DefaultTypedControllerRateLimiter[string](), "cron_wf_queue"),
-		wfDefaults:           wfDefaults,
 		metrics:              metrics,
 		eventRecorderManager: eventRecorderManager,
 		wftmplInformer:       wftmplInformer,
@@ -97,12 +95,12 @@ func (cc *Controller) Run(ctx context.Context) {
 	defer runtimeutil.HandleCrashWithContext(ctx, runtimeutil.PanicHandlers...)
 	defer cc.cronWfQueue.ShutDown()
 	log.Infof("Starting CronWorkflow controller")
-	if cc.instanceID != "" {
-		log.Infof("...with InstanceID: %s", cc.instanceID)
+	if cc.instanceId != "" {
+		log.Infof("...with InstanceID: %s", cc.instanceId)
 	}
 
 	cc.cronWfInformer = dynamicinformer.NewFilteredDynamicSharedInformerFactory(cc.dynamicInterface, cronWorkflowResyncPeriod, cc.managedNamespace, func(options *v1.ListOptions) {
-		cronWfInformerListOptionsFunc(options, cc.instanceID)
+		cronWfInformerListOptionsFunc(options, cc.instanceId)
 	}).ForResource(schema.GroupVersionResource{Group: workflow.Group, Version: workflow.Version, Resource: workflow.CronWorkflowPlural})
 	err := cc.addCronWorkflowInformerHandler()
 	if err != nil {
@@ -110,8 +108,8 @@ func (cc *Controller) Run(ctx context.Context) {
 	}
 
 	wfInformer := util.NewWorkflowInformer(cc.dynamicInterface, cc.managedNamespace, cronWorkflowResyncPeriod,
-		func(options *v1.ListOptions) { wfInformerListOptionsFunc(options, cc.instanceID) },
-		func(options *v1.ListOptions) { wfInformerListOptionsFunc(options, cc.instanceID) },
+		func(options *v1.ListOptions) { wfInformerListOptionsFunc(options, cc.instanceId) },
+		func(options *v1.ListOptions) { wfInformerListOptionsFunc(options, cc.instanceId) },
 		cache.Indexers{})
 	go wfInformer.Run(ctx.Done())
 
@@ -177,7 +175,7 @@ func (cc *Controller) processNextCronItem(ctx context.Context) bool {
 	}
 	ctx = wfctx.InjectObjectMeta(ctx, &cronWf.ObjectMeta)
 
-	cronWorkflowOperationCtx := newCronWfOperationCtx(cronWf, cc.wfClientset, cc.metrics, cc.wftmplInformer, cc.cwftmplInformer, cc.wfDefaults)
+	cronWorkflowOperationCtx := newCronWfOperationCtx(cronWf, cc.wfClientset, cc.metrics, cc.wftmplInformer, cc.cwftmplInformer)
 
 	err = cronWorkflowOperationCtx.validateCronWorkflow(ctx)
 	if err != nil {
@@ -295,7 +293,7 @@ func (cc *Controller) syncCronWorkflow(ctx context.Context, cronWf *v1alpha1.Cro
 	cc.keyLock.Lock(key)
 	defer cc.keyLock.Unlock(key)
 
-	cwoc := newCronWfOperationCtx(cronWf, cc.wfClientset, cc.metrics, cc.wftmplInformer, cc.cwftmplInformer, cc.wfDefaults)
+	cwoc := newCronWfOperationCtx(cronWf, cc.wfClientset, cc.metrics, cc.wftmplInformer, cc.cwftmplInformer)
 	err := cwoc.enforceHistoryLimit(ctx, workflows)
 	if err != nil {
 		return err
@@ -320,19 +318,19 @@ func groupWorkflows(wfs []*v1alpha1.Workflow) map[types.UID][]v1alpha1.Workflow 
 	return cwfChildren
 }
 
-func cronWfInformerListOptionsFunc(options *v1.ListOptions, instanceID string) {
+func cronWfInformerListOptionsFunc(options *v1.ListOptions, instanceId string) {
 	options.FieldSelector = fields.Everything().String()
-	labelSelector := labels.NewSelector().Add(util.InstanceIDRequirement(instanceID))
+	labelSelector := labels.NewSelector().Add(util.InstanceIDRequirement(instanceId))
 	options.LabelSelector = labelSelector.String()
 }
 
-func wfInformerListOptionsFunc(options *v1.ListOptions, instanceID string) {
+func wfInformerListOptionsFunc(options *v1.ListOptions, instanceId string) {
 	options.FieldSelector = fields.Everything().String()
 	isCronWorkflowChildReq, err := labels.NewRequirement(common.LabelKeyCronWorkflow, selection.Exists, []string{})
 	if err != nil {
 		panic(err)
 	}
 	labelSelector := labels.NewSelector().Add(*isCronWorkflowChildReq)
-	labelSelector = labelSelector.Add(util.InstanceIDRequirement(instanceID))
+	labelSelector = labelSelector.Add(util.InstanceIDRequirement(instanceId))
 	options.LabelSelector = labelSelector.String()
 }

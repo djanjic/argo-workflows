@@ -3,12 +3,6 @@
 Breaking changes  typically (sometimes we don't realise they are breaking) have "!" in the commit message, as per
 the [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/#summary).
 
-## Upgrading to v3.7
-
-### Deprecations
-
-Several Sprig functions have been deprecated in favor of Expr standard library alternatives. While these functions continue to work, they will be removed in a future version. See [available Sprig functions](variables.md#sprig-functions) for the complete list and [Expression language](variables.md#expression) for alternatives.
-
 ## Upgrading to v3.6
 
 See also the list of [new features in 3.6](new-features.md).
@@ -155,11 +149,6 @@ It has been replaced with a link to the [Swagger UI in the versioned documentati
 
 When returning a map or array in an expression, you would get a Golang representation.
 This now returns plain JSON.
-
-### Added container name to workflow node error messages
-
-Workflow node error messages are now prefixed with the container name.
-If you are using [Conditional Retries](retries.md#conditional-retries), you may need to adjust your usage of `lastRetry.message` expressions or the `TRANSIENT_ERROR_PATTERN` environment variable.
 
 ### `ARGO_TEMPLATE` removed from main container
 
