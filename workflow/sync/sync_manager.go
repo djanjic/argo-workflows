@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	runtimeutil "k8s.io/apimachinery/pkg/util/runtime"
@@ -20,22 +19,20 @@ type (
 )
 
 type Manager struct {
-	syncLockMap       map[string]semaphore
-	lock              *sync.RWMutex
-	nextWorkflow      NextWorkflow
-	getSyncLimit      GetSyncLimit
-	syncLimitCacheTTL time.Duration
-	isWFDeleted       IsWorkflowDeleted
+	syncLockMap  map[string]semaphore
+	lock         *sync.RWMutex
+	nextWorkflow NextWorkflow
+	getSyncLimit GetSyncLimit
+	isWFDeleted  IsWorkflowDeleted
 }
 
-func NewLockManager(getSyncLimit GetSyncLimit, syncLimitCacheTTL time.Duration, nextWorkflow NextWorkflow, isWFDeleted IsWorkflowDeleted) *Manager {
+func NewLockManager(getSyncLimit GetSyncLimit, nextWorkflow NextWorkflow, isWFDeleted IsWorkflowDeleted) *Manager {
 	return &Manager{
-		syncLockMap:       make(map[string]semaphore),
-		lock:              &sync.RWMutex{},
-		nextWorkflow:      nextWorkflow,
-		getSyncLimit:      getSyncLimit,
-		syncLimitCacheTTL: syncLimitCacheTTL,
-		isWFDeleted:       isWFDeleted,
+		syncLockMap:  make(map[string]semaphore),
+		lock:         &sync.RWMutex{},
+		nextWorkflow: nextWorkflow,
+		getSyncLimit: getSyncLimit,
+		isWFDeleted:  isWFDeleted,
 	}
 }
 
@@ -376,7 +373,9 @@ func (sm *Manager) ReleaseAll(wf *wfv1.Workflow) bool {
 	}
 
 	if wf.Status.Synchronization.Mutex != nil {
-		for _, holding := range wf.Status.Synchronization.Mutex.Holding {
+		h := make([]wfv1.MutexHolding, len(wf.Status.Synchronization.Mutex.Holding))
+		copy(h, wf.Status.Synchronization.Mutex.Holding)
+		for _, holding := range h {
 			syncLockHolder := sm.syncLockMap[holding.Mutex]
 			if syncLockHolder == nil {
 				continue
@@ -465,18 +464,12 @@ func (sm *Manager) isSemaphoreSizeChanged(semaphore semaphore) (bool, int, error
 }
 
 func (sm *Manager) checkAndUpdateSemaphoreSize(semaphore semaphore) error {
-	if nowFn().Sub(semaphore.getLimitTimestamp()) < sm.syncLimitCacheTTL {
-		return nil
-	}
-
 	changed, newLimit, err := sm.isSemaphoreSizeChanged(semaphore)
 	if err != nil {
 		return err
 	}
 	if changed {
 		semaphore.resize(newLimit)
-	} else {
-		semaphore.resetLimitTimestamp()
 	}
 	return nil
 }

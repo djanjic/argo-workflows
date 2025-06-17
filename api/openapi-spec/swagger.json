@@ -3009,16 +3009,6 @@
             "description": "Filter type used for name filtering. Exact | Contains | Prefix. Default to Exact.",
             "name": "nameFilter",
             "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "createdAfter",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "finishedBefore",
-            "in": "query"
           }
         ],
         "responses": {
@@ -8553,10 +8543,6 @@
       "description": "Backoff is a backoff strategy to use within retryStrategy",
       "type": "object",
       "properties": {
-        "cap": {
-          "description": "Cap is a limit on revised values of the duration parameter. If a multiplication by the factor parameter would make the duration exceed the cap then the duration is set to the cap",
-          "type": "string"
-        },
         "duration": {
           "description": "Duration is the amount to back off. Default unit is seconds, but could also be a duration (e.g. \"2m\", \"1h\")",
           "type": "string"
@@ -9135,6 +9121,14 @@
     "io.argoproj.workflow.v1alpha1.CronWorkflowStatus": {
       "description": "CronWorkflowStatus is the status of a CronWorkflow",
       "type": "object",
+      "required": [
+        "active",
+        "lastScheduledTime",
+        "conditions",
+        "succeeded",
+        "failed",
+        "phase"
+      ],
       "properties": {
         "active": {
           "description": "Active is a list of active workflows stemming from this CronWorkflow",
@@ -9213,7 +9207,7 @@
           }
         },
         "inline": {
-          "description": "Inline is the template. Template must be empty if this is declared (and vice-versa). Note: As mentioned in the corresponding definition in WorkflowStep, this struct is defined recursively, so we need \"x-kubernetes-preserve-unknown-fields: true\" in the validation schema.",
+          "description": "Inline is the template. Template must be empty if this is declared (and vice-versa).",
           "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Template"
         },
         "name": {
@@ -9237,7 +9231,7 @@
           "type": "string"
         },
         "withItems": {
-          "description": "WithItems expands a task into multiple parallel tasks from the items in the list Note: The structure of WithItems is free-form, so we need \"x-kubernetes-preserve-unknown-fields: true\" in the validation schema.",
+          "description": "WithItems expands a task into multiple parallel tasks from the items in the list",
           "type": "array",
           "items": {
             "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Item"
@@ -10390,7 +10384,7 @@
           "x-kubernetes-patch-strategy": "merge"
         },
         "result": {
-          "description": "Result holds the result (stdout) of a script or container template, or the response body of an HTTP template",
+          "description": "Result holds the result (stdout) of a script template",
           "type": "string"
         }
       }
@@ -10432,7 +10426,7 @@
           "type": "string"
         },
         "value": {
-          "description": "Value is the literal value to use for the parameter. If specified in the context of an input parameter, any passed values take precedence over the specified value",
+          "description": "Value is the literal value to use for the parameter. If specified in the context of an input parameter, the value takes precedence over any passed values",
           "type": "string"
         },
         "valueFrom": {
@@ -11210,13 +11204,6 @@
           "description": "Affinity sets the pod's scheduling constraints Overrides the affinity set at the workflow level (if any)",
           "$ref": "#/definitions/io.k8s.api.core.v1.Affinity"
         },
-        "annotations": {
-          "description": "Annotations is a list of annotations to add to the template at runtime",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
         "archiveLocation": {
           "description": "Location in which all files related to the step will be stored (logs, artifacts, etc...). Can be overridden by individual items in Outputs. If omitted, will use the default artifact repository location configured in the controller, appended with the \u003cworkflowname\u003e/\u003cnodename\u003e in the key.",
           "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.ArtifactLocation"
@@ -11311,12 +11298,16 @@
           "type": "integer"
         },
         "plugin": {
-          "description": "Plugin is a plugin template Note: the structure of a plugin template is free-form, so we need to have \"x-kubernetes-preserve-unknown-fields: true\" in the validation schema.",
+          "description": "Plugin is a plugin template",
           "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Plugin"
         },
         "podSpecPatch": {
           "description": "PodSpecPatch holds strategic merge patch to apply against the pod spec. Allows parameterization of container fields which are not strings (e.g. resource limits).",
           "type": "string"
+        },
+        "priority": {
+          "description": "Priority to apply to workflow pods.",
+          "type": "integer"
         },
         "priorityClassName": {
           "description": "PriorityClassName to apply to workflow pods.",
@@ -12084,6 +12075,10 @@
           "description": "PodMetadata defines additional metadata that should be applied to workflow pods",
           "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Metadata"
         },
+        "podPriority": {
+          "description": "Priority to apply to workflow pods. DEPRECATED: Use PodPriorityClassName instead.",
+          "type": "integer"
+        },
         "podPriorityClassName": {
           "description": "PriorityClassName to apply to workflow pods.",
           "type": "string"
@@ -12301,7 +12296,7 @@
           }
         },
         "inline": {
-          "description": "Inline is the template. Template must be empty if this is declared (and vice-versa). Note: This struct is defined recursively, since the inline template can potentially contain steps/DAGs that also has an \"inline\" field. Kubernetes doesn't allow recursive types, so we need \"x-kubernetes-preserve-unknown-fields: true\" in the validation schema.",
+          "description": "Inline is the template. Template must be empty if this is declared (and vice-versa).",
           "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Template"
         },
         "name": {
@@ -12325,7 +12320,7 @@
           "type": "string"
         },
         "withItems": {
-          "description": "WithItems expands a step into multiple parallel steps from the items in the list Note: The structure of WithItems is free-form, so we need \"x-kubernetes-preserve-unknown-fields: true\" in the validation schema.",
+          "description": "WithItems expands a step into multiple parallel steps from the items in the list",
           "type": "array",
           "items": {
             "$ref": "#/definitions/io.argoproj.workflow.v1alpha1.Item"
