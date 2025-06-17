@@ -40,7 +40,7 @@ spec:
     entrypoint: whalesay
     templates:
     - name: whalesay
-      container: 
+      container:
         image: docker/whalesay:latest
         command: [cowsay]
         args: ["hello world"]
@@ -49,7 +49,7 @@ spec:
 	newWf := wf.DeepCopy()
 	wfClientSet := argofake.NewSimpleClientset()
 	ctx := context.Background()
-	newWf, err := SubmitWorkflow(ctx, nil, wfClientSet, "test-namespace", newWf, nil, &wfv1.SubmitOpts{DryRun: true})
+	newWf, err := SubmitWorkflow(ctx, nil, wfClientSet, "test-namespace", newWf, &wfv1.SubmitOpts{DryRun: true})
 	require.NoError(t, err)
 	assert.Equal(t, wf.Spec, newWf.Spec)
 	assert.Equal(t, wf.Status, newWf.Status)
@@ -180,19 +180,19 @@ metadata:
   selfLink: /apis/argoproj.io/v1alpha1/namespaces/argo/workflows/suspend
   uid: 4f08d325-dc5a-43a3-9986-259e259e6ea3
 spec:
-  
+
   entrypoint: suspend
   templates:
-  - 
+  -
     inputs: {}
     metadata: {}
     name: suspend
     outputs: {}
     steps:
-    - - 
+    - -
         name: approve
         template: approve
-  - 
+  -
     inputs: {}
     metadata: {}
     name: approve
@@ -364,16 +364,16 @@ kind: Workflow
 metadata:
   name: suspend-template
 spec:
-  
+
   entrypoint: suspend
   templates:
-  - 
+  -
     inputs: {}
     metadata: {}
     name: suspend
     outputs: {}
     steps:
-    - - 
+    - -
         name: approve
         template: approve
     - - arguments:
@@ -382,7 +382,7 @@ spec:
             value: '{{steps.approve.outputs.parameters.message}}'
         name: release
         template: whalesay
-  - 
+  -
     inputs: {}
     metadata: {}
     name: approve
@@ -392,7 +392,7 @@ spec:
         valueFrom:
           supplied: {}
     suspend: {}
-  - 
+  -
     container:
       args:
       - '{{inputs.parameters.message}}'
@@ -466,15 +466,15 @@ func TestUpdateSuspendedNode(t *testing.T) {
 	ctx := context.Background()
 	_, err := wfIf.Create(ctx, origWf, metav1.CreateOptions{})
 	require.NoError(t, err)
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "does-not-exist", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "does-not-exist", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}})
 	require.EqualError(t, err, "workflows.argoproj.io \"does-not-exist\" not found")
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=does-not-exists", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=does-not-exists", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}})
 	require.EqualError(t, err, "currently, set only targets suspend nodes: no suspend nodes matching nodeFieldSelector: displayName=does-not-exists")
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"does-not-exist": "Hello World"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"does-not-exist": "Hello World"}})
 	require.EqualError(t, err, "node is not expecting output parameter 'does-not-exist'")
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}})
 	require.NoError(t, err)
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "name=suspend-template-kgfn7[0].approve", SetOperationValues{OutputParameters: map[string]string{"message2": "Hello World 2"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template", "name=suspend-template-kgfn7[0].approve", SetOperationValues{OutputParameters: map[string]string{"message2": "Hello World 2"}})
 	require.NoError(t, err)
 
 	// make sure global variable was updated
@@ -489,7 +489,7 @@ func TestUpdateSuspendedNode(t *testing.T) {
 	noSpaceWf.Status.Nodes["suspend-template-kgfn7-2667278707"] = node
 	_, err = wfIf.Create(ctx, noSpaceWf, metav1.CreateOptions{})
 	require.NoError(t, err)
-	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template-no-outputs", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}}, creator.ActionNone)
+	err = updateSuspendedNode(ctx, wfIf, hydratorfake.Noop, "suspend-template-no-outputs", "displayName=approve", SetOperationValues{OutputParameters: map[string]string{"message": "Hello World"}})
 	require.EqualError(t, err, "cannot set output parameters because node is not expecting any raw parameters")
 }
 
@@ -741,22 +741,22 @@ metadata:
   selfLink: /apis/argoproj.io/v1alpha1/namespaces/argo/workflows/steps-9fkqc
   uid: 241a39ef-4ff1-487f-8461-98df5d2b50fb
 spec:
-  
+
   entrypoint: foo
   templates:
-  - 
+  -
     inputs: {}
     metadata: {}
     name: foo
     outputs: {}
     steps:
-    - - 
+    - -
         name: pass
         template: pass
-    - - 
+    - -
         name: fail
         template: fail
-  - 
+  -
     container:
       args:
       - exit 0
@@ -770,7 +770,7 @@ spec:
     metadata: {}
     name: pass
     outputs: {}
-  - 
+  -
     container:
       args:
       - exit 1
@@ -1326,8 +1326,7 @@ kind: CronWorkflow
 metadata:
   name: example-integers
 spec:
-  schedules:
-    - "* * * * *"
+  schedule: "* * * * *"
   workflowSpec:
     entrypoint: whalesay
     templates:

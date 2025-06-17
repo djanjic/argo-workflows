@@ -263,17 +263,6 @@ func (woc *wfOperationCtx) executeDAG(ctx context.Context, nodeName string, tmpl
 		targetTasks = strings.Split(tmpl.DAG.Target, " ")
 	}
 
-	// pre-execute daemoned tasks
-	for _, task := range tmpl.DAG.Tasks {
-		taskNode := dagCtx.getTaskNode(task.Name)
-		if err != nil {
-			continue
-		}
-		if taskNode != nil && taskNode.IsDaemoned() {
-			woc.executeDAGTask(ctx, dagCtx, task.Name)
-		}
-	}
-
 	// kick off execution of each target task asynchronously
 	onExitCompleted := true
 	for _, taskName := range targetTasks {
@@ -440,7 +429,7 @@ func (woc *wfOperationCtx) executeDAGTask(ctx context.Context, dagCtx *dagContex
 		}
 	}
 
-	if node != nil && node.Phase.Fulfilled() {
+	if node != nil && node.Fulfilled() {
 		// Collect the completed task metrics
 		_, tmpl, _, tmplErr := dagCtx.tmplCtx.ResolveTemplate(task)
 		if tmplErr != nil {
@@ -670,10 +659,6 @@ func (woc *wfOperationCtx) buildLocalScopeFromTask(dagCtx *dagContext, task *wfv
 			var ancestorNodes []wfv1.NodeStatus
 			for _, node := range woc.wf.Status.Nodes {
 				if node.BoundaryID == dagCtx.boundaryID && strings.HasPrefix(node.Name, ancestorNode.Name+"(") {
-					// Filter retried nodes and only aggregate outputs of their parent nodes.
-					if node.NodeFlag != nil && node.NodeFlag.Retried {
-						continue
-					}
 					ancestorNodes = append(ancestorNodes, node)
 				}
 			}
@@ -745,9 +730,11 @@ func (woc *wfOperationCtx) resolveDependencyReferences(dagCtx *dagContext, task 
 		return &newTask, nil
 	}
 
+	artifacts := wfv1.Artifacts{}
 	// replace all artifact references
-	for j, art := range newTask.Arguments.Artifacts {
-		if art.From == "" {
+	for _, art := range newTask.Arguments.Artifacts {
+		if art.From == "" && art.FromExpression == "" {
+			artifacts = append(artifacts, art)
 			continue
 		}
 		resolvedArt, err := scope.resolveArtifact(&art)
@@ -759,8 +746,9 @@ func (woc *wfOperationCtx) resolveDependencyReferences(dagCtx *dagContext, task 
 			return nil, err
 		}
 		resolvedArt.Name = art.Name
-		newTask.Arguments.Artifacts[j] = *resolvedArt
+		artifacts = append(artifacts, *resolvedArt)
 	}
+	newTask.Arguments.Artifacts = artifacts
 	return &newTask, nil
 }
 

@@ -315,6 +315,7 @@ func newController(options ...interface{}) (context.CancelFunc, *WorkflowControl
 		wfc.entrypoint = entrypoint.New(kube, wfc.Config.Images)
 		wfc.wfQueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 		wfc.throttler = wfc.newThrottler()
+		wfc.podCleanupQueue = workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[string]())
 		wfc.rateLimiter = wfc.newRateLimiter()
 	}
 
@@ -920,10 +921,10 @@ metadata:
 spec:
  entrypoint: whalesay
  synchronization:
-   semaphores:
-     - configMapKeyRef:
-         name: my-config
-         key: workflow
+   semaphore:
+     configMapKeyRef:
+       name: my-config
+       key: workflow
  templates:
  - name: whalesay
    container:
