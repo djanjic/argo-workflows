@@ -21,6 +21,7 @@ import (
 
 	"github.com/argoproj/argo-workflows/v3/util/file"
 
+	argofile "github.com/argoproj/pkg/file"
 	log "github.com/sirupsen/logrus"
 	apiv1 "k8s.io/api/core/v1"
 	apierr "k8s.io/apimachinery/pkg/api/errors"
@@ -56,7 +57,7 @@ type WorkflowExecutor struct {
 	podUID              types.UID
 	workflow            string
 	workflowUID         types.UID
-	nodeID              string
+	nodeId              string
 	Template            wfv1.Template
 	IncludeScriptOutput bool
 	Deadline            time.Time
@@ -115,7 +116,7 @@ func NewExecutor(
 	podUID types.UID,
 	workflow string,
 	workflowUID types.UID,
-	nodeID, namespace string,
+	nodeId, namespace string,
 	cre ContainerRuntimeExecutor,
 	template wfv1.Template,
 	includeScriptOutput bool,
@@ -128,7 +129,7 @@ func NewExecutor(
 		podUID:                       podUID,
 		workflow:                     workflow,
 		workflowUID:                  workflowUID,
-		nodeID:                       nodeID,
+		nodeId:                       nodeId,
 		ClientSet:                    clientset,
 		taskResultClient:             taskResultClient,
 		RESTClient:                   restClient,
@@ -359,11 +360,11 @@ func (we *WorkflowExecutor) saveArtifactFromFile(ctx context.Context, art *wfv1.
 		if err != nil {
 			return err
 		}
-		artLocation, err := we.Template.ArchiveLocation.Get()
+		art_location, err := we.Template.ArchiveLocation.Get()
 		if err != nil {
 			return err
 		}
-		if err = art.SetType(artLocation); err != nil {
+		if err = art.SetType(art_location); err != nil {
 			return err
 		}
 		if err := art.SetKey(path.Join(key, fileName)); err != nil {
@@ -433,7 +434,7 @@ func (we *WorkflowExecutor) stageArchiveFile(containerName string, art *wfv1.Art
 		if strategy.None != nil {
 			fileName := filepath.Base(art.Path)
 			log.Infof("No compression strategy needed. Staging skipped")
-			if !file.Exists(mountedArtPath) {
+			if !argofile.Exists(mountedArtPath) {
 				return "", "", argoerrs.Errorf(argoerrs.CodeNotFound, "%s no such file or directory", art.Path)
 			}
 			return fileName, mountedArtPath, nil
@@ -493,7 +494,7 @@ func (we *WorkflowExecutor) stageArchiveFile(containerName string, art *wfv1.Art
 	if err != nil {
 		return "", "", argoerrs.InternalWrapError(err)
 	}
-	isDir, err := file.IsDirectory(unarchivedArtPath)
+	isDir, err := argofile.IsDirectory(unarchivedArtPath)
 	if err != nil {
 		return "", "", argoerrs.InternalWrapError(err)
 	}
@@ -846,16 +847,6 @@ func (we *WorkflowExecutor) ReportOutputs(ctx context.Context, artifacts []wfv1.
 	outputs := we.Template.Outputs.DeepCopy()
 	outputs.Artifacts = artifacts
 	return we.reportResult(ctx, wfv1.NodeResult{Outputs: outputs})
-}
-
-// ReportOutputsLogs updates the WorkflowTaskResult log fields
-func (we *WorkflowExecutor) ReportOutputsLogs(ctx context.Context) error {
-	var outputs wfv1.Outputs
-	artifacts := wfv1.Artifacts{}
-	logArtifacts := we.SaveLogs(ctx)
-	artifacts = append(artifacts, logArtifacts...)
-	outputs.Artifacts = artifacts
-	return we.reportResult(ctx, wfv1.NodeResult{Outputs: &outputs})
 }
 
 func (we *WorkflowExecutor) reportResult(ctx context.Context, result wfv1.NodeResult) error {

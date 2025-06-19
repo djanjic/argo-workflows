@@ -155,7 +155,7 @@ func (d *dagContext) assessDAGPhase(targetTasks []string, nodes wfv1.Nodes, isSh
 	for !uniqueQueue.empty() {
 		curr := uniqueQueue.pop()
 
-		node, err := nodes.Get(curr.nodeID)
+		node, err := nodes.Get(curr.nodeId)
 		if err != nil {
 			// this is okay, this means that
 			// we are still running
@@ -261,17 +261,6 @@ func (woc *wfOperationCtx) executeDAG(ctx context.Context, nodeName string, tmpl
 		targetTasks = dagCtx.findLeafTaskNames(tmpl.DAG.Tasks)
 	} else {
 		targetTasks = strings.Split(tmpl.DAG.Target, " ")
-	}
-
-	// pre-execute daemoned tasks
-	for _, task := range tmpl.DAG.Tasks {
-		taskNode := dagCtx.getTaskNode(task.Name)
-		if err != nil {
-			continue
-		}
-		if taskNode != nil && taskNode.IsDaemoned() {
-			woc.executeDAGTask(ctx, dagCtx, task.Name)
-		}
 	}
 
 	// kick off execution of each target task asynchronously
@@ -440,7 +429,7 @@ func (woc *wfOperationCtx) executeDAGTask(ctx context.Context, dagCtx *dagContex
 		}
 	}
 
-	if node != nil && node.Phase.Fulfilled() {
+	if node != nil && node.Fulfilled() {
 		// Collect the completed task metrics
 		_, tmpl, _, tmplErr := dagCtx.tmplCtx.ResolveTemplate(task)
 		if tmplErr != nil {

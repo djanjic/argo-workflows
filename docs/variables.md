@@ -78,6 +78,8 @@ Map a list:
 map([1, 2], { # * 2 })
 ```
 
+We provide some core functions:
+
 Cast to int:
 
 ```text
@@ -96,16 +98,11 @@ Cast to string:
 string(1)
 ```
 
-We provide some additional functions:
-
 Convert to a JSON string (needed for `withParam`):
 
 ```text
 toJson([1, 2])
 ```
-
-`toJson` is the same as [expr's built-in `toJSON` function](https://expr-lang.org/docs/language-definition#toJSON),
-except `toJson` does not add indentation.
 
 Extract data from JSON:
 
@@ -113,9 +110,9 @@ Extract data from JSON:
 jsonpath(inputs.parameters.json, '$.some.path')
 ```
 
-#### Sprig Functions
+You can also use [Sprig functions](http://masterminds.github.io/sprig/):
 
-You can also use a curated set of [Sprig functions](http://masterminds.github.io/sprig/):
+Trim a string:
 
 ```text
 sprig.trim(inputs.parameters['my-string-param'])
@@ -125,26 +122,6 @@ sprig.trim(inputs.parameters['my-string-param'])
     Sprig functions often do not raise errors.
     For example, if `int` is used on an invalid value, it returns `0`.
     Please review the Sprig documentation to understand which functions raise errors and which do not.
-
-Available Sprig functions include:
-
-* Random/crypto: `randAlpha`, `randAlphaNum`, `randAscii`, `randNumeric`, `randBytes`, `randInt`, `uuidv4`
-
-* Regex helpers: `regexFindAll`, `regexSplit`, `regexReplaceAll`, `regexReplaceAllLiteral`, `regexQuoteMeta`
-
-* Text formatting: `wrap`, `wrapWith`, `nospace`, `title`, `untitle`, `plural`, `initials`, `snakecase`, `camelcase`, `kebabcase`, `swapcase`, `shuffle`, `trunc`
-
-* Dictionary and reflection helpers: `dict`, `set`, `deepCopy`, `merge`, `mergeOverwrite`, `mergeRecursive`, `dig`, `pluck`, `typeIsLike`, `kindIs`, `typeOf`
-
-* Path/URL helpers: `base`, `dir`, `ext`, `clean`, `urlParse`, `urlJoin`
-
-* SemVer helpers: `semver`, `semverCompare`
-
-* Flow control: `fail`, `required`
-
-* Encoding/YAML: `b32enc`, `b32dec`, `toYaml`, `fromYaml`
-
-For complete documentation on these functions, refer to the [Sprig documentation](http://masterminds.github.io/sprig/).
 
 ## Reference
 
@@ -169,7 +146,7 @@ For complete documentation on these functions, refer to the [Sprig documentation
 | `steps.<STEPNAME>.startedAt` | Time-stamp when the step started |
 | `steps.<STEPNAME>.finishedAt` | Time-stamp when the step finished |
 | `steps.<TASKNAME>.hostNodeName` | Host node where task ran (available from version 3.5) |
-| `steps.<STEPNAME>.outputs.result` | Output result of any previous container, script, or HTTP step |
+| `steps.<STEPNAME>.outputs.result` | Output result of any previous container or script step |
 | `steps.<STEPNAME>.outputs.parameters` | When the previous step uses `withItems` or `withParams`, this contains a JSON array of the output parameter maps of each invocation |
 | `steps.<STEPNAME>.outputs.parameters.<NAME>` | Output parameter of any previous step. When the previous step uses `withItems` or `withParams`, this contains a JSON array of the output parameter values of each invocation |
 | `steps.<STEPNAME>.outputs.artifacts.<NAME>` | Output artifact of any previous step |
@@ -186,7 +163,7 @@ For complete documentation on these functions, refer to the [Sprig documentation
 | `tasks.<TASKNAME>.startedAt` | Time-stamp when the task started |
 | `tasks.<TASKNAME>.finishedAt` | Time-stamp when the task finished |
 | `tasks.<TASKNAME>.hostNodeName` | Host node where task ran (available from version 3.5) |
-| `tasks.<TASKNAME>.outputs.result` | Output result of any previous container, script, or HTTP task |
+| `tasks.<TASKNAME>.outputs.result` | Output result of any previous container or script task |
 | `tasks.<TASKNAME>.outputs.parameters` | When the previous task uses `withItems` or `withParams`, this contains a JSON array of the output parameter maps of each invocation |
 | `tasks.<TASKNAME>.outputs.parameters.<NAME>` | Output parameter of any previous task. When the previous task uses `withItems` or `withParams`, this contains a JSON array of the output parameter values of each invocation |
 | `tasks.<TASKNAME>.outputs.artifacts.<NAME>` | Output artifact of any previous task |
@@ -242,7 +219,6 @@ Note: These variables evaluate to a string type. If using advanced expressions, 
 |----------|------------|
 | `pod.name` | Pod name of the container/script |
 | `retries` | The retry number of the container/script if `retryStrategy` is specified |
-| `lastRetry` | The last retry is a structure that contains the fields `exitCode`, `status`, `duration` and `message` of the last retry |
 | `inputs.artifacts.<NAME>.path` | Local path of the input artifact |
 | `outputs.artifacts.<NAME>.path` | Local path of the output artifact |
 | `outputs.parameters.<NAME>.path` | Local path of the output parameter |

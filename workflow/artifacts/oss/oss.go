@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alibabacloud-go/tea/tea"
+	"github.com/argoproj/pkg/file"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/aliyun/credentials-go/credentials"
@@ -20,7 +21,6 @@ import (
 	"github.com/argoproj/argo-workflows/v3/errors"
 	wfv1 "github.com/argoproj/argo-workflows/v3/pkg/apis/workflow/v1alpha1"
 	errutil "github.com/argoproj/argo-workflows/v3/util/errors"
-	"github.com/argoproj/argo-workflows/v3/util/file"
 	waitutil "github.com/argoproj/argo-workflows/v3/util/wait"
 	"github.com/argoproj/argo-workflows/v3/workflow/artifacts/common"
 	wfcommon "github.com/argoproj/argo-workflows/v3/workflow/common"
@@ -50,30 +50,30 @@ type ossCredentials struct {
 }
 
 func (cred *ossCredentials) GetAccessKeyID() string {
-	credential, err := cred.teaCred.GetCredential()
+	value, err := cred.teaCred.GetAccessKeyId()
 	if err != nil {
 		log.Infof("get access key id failed: %+v", err)
 		return ""
 	}
-	return tea.StringValue(credential.AccessKeyId)
+	return tea.StringValue(value)
 }
 
 func (cred *ossCredentials) GetAccessKeySecret() string {
-	credential, err := cred.teaCred.GetCredential()
+	value, err := cred.teaCred.GetAccessKeySecret()
 	if err != nil {
 		log.Infof("get access key secret failed: %+v", err)
 		return ""
 	}
-	return tea.StringValue(credential.AccessKeySecret)
+	return tea.StringValue(value)
 }
 
 func (cred *ossCredentials) GetSecurityToken() string {
-	credential, err := cred.teaCred.GetCredential()
+	value, err := cred.teaCred.GetSecurityToken()
 	if err != nil {
 		log.Infof("get access security token failed: %+v", err)
 		return ""
 	}
-	return tea.StringValue(credential.SecurityToken)
+	return tea.StringValue(value)
 }
 
 type ossCredentialsProvider struct {

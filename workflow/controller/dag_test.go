@@ -3396,7 +3396,7 @@ func TestDAGReferTaskAggregatedOutputs(t *testing.T) {
 	assert.Equal(t, `["odd","even"]`, dagNode.Outputs.Parameters[1].Value.String())
 }
 
-var dagHTTPChildrenAssigned = `apiVersion: argoproj.io/v1alpha1
+var dagHttpChildrenAssigned = `apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   name: http-template-nv52d
@@ -3459,7 +3459,7 @@ status:
 `
 
 func TestDagHttpChildrenAssigned(t *testing.T) {
-	wf := wfv1.MustUnmarshalWorkflow(dagHTTPChildrenAssigned)
+	wf := wfv1.MustUnmarshalWorkflow(dagHttpChildrenAssigned)
 	cancel, controller := newController(wf)
 	defer cancel()
 
@@ -3489,8 +3489,8 @@ spec:
   templates:
   - name: linuxExitHandler
     steps:
-    - - name: print-exit
-        template: print-exit
+    - - name: printExit
+        template: printExit
   - container:
       args:
       - echo
@@ -3499,7 +3499,7 @@ spec:
       - /argosay
       image: argoproj/argosay:v2
       name: ""
-    name: print-exit
+    name: printExit
   - container:
       args:
       - echo
