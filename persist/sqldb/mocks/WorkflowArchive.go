@@ -3,8 +3,6 @@
 package mocks
 
 import (
-	context "context"
-
 	mock "github.com/stretchr/testify/mock"
 	labels "k8s.io/apimachinery/pkg/labels"
 
@@ -20,17 +18,17 @@ type WorkflowArchive struct {
 	mock.Mock
 }
 
-// ArchiveWorkflow provides a mock function with given fields: ctx, wf
-func (_m *WorkflowArchive) ArchiveWorkflow(ctx context.Context, wf *v1alpha1.Workflow) error {
-	ret := _m.Called(ctx, wf)
+// ArchiveWorkflow provides a mock function with given fields: wf
+func (_m *WorkflowArchive) ArchiveWorkflow(wf *v1alpha1.Workflow) error {
+	ret := _m.Called(wf)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ArchiveWorkflow")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *v1alpha1.Workflow) error); ok {
-		r0 = rf(ctx, wf)
+	if rf, ok := ret.Get(0).(func(*v1alpha1.Workflow) error); ok {
+		r0 = rf(wf)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -38,9 +36,9 @@ func (_m *WorkflowArchive) ArchiveWorkflow(ctx context.Context, wf *v1alpha1.Wor
 	return r0
 }
 
-// CountWorkflows provides a mock function with given fields: ctx, options
-func (_m *WorkflowArchive) CountWorkflows(ctx context.Context, options utils.ListOptions) (int64, error) {
-	ret := _m.Called(ctx, options)
+// CountWorkflows provides a mock function with given fields: options
+func (_m *WorkflowArchive) CountWorkflows(options utils.ListOptions) (int64, error) {
+	ret := _m.Called(options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CountWorkflows")
@@ -48,17 +46,17 @@ func (_m *WorkflowArchive) CountWorkflows(ctx context.Context, options utils.Lis
 
 	var r0 int64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, utils.ListOptions) (int64, error)); ok {
-		return rf(ctx, options)
+	if rf, ok := ret.Get(0).(func(utils.ListOptions) (int64, error)); ok {
+		return rf(options)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, utils.ListOptions) int64); ok {
-		r0 = rf(ctx, options)
+	if rf, ok := ret.Get(0).(func(utils.ListOptions) int64); ok {
+		r0 = rf(options)
 	} else {
 		r0 = ret.Get(0).(int64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, utils.ListOptions) error); ok {
-		r1 = rf(ctx, options)
+	if rf, ok := ret.Get(1).(func(utils.ListOptions) error); ok {
+		r1 = rf(options)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -66,17 +64,17 @@ func (_m *WorkflowArchive) CountWorkflows(ctx context.Context, options utils.Lis
 	return r0, r1
 }
 
-// DeleteExpiredWorkflows provides a mock function with given fields: ctx, ttl
-func (_m *WorkflowArchive) DeleteExpiredWorkflows(ctx context.Context, ttl time.Duration) error {
-	ret := _m.Called(ctx, ttl)
+// DeleteExpiredWorkflows provides a mock function with given fields: ttl
+func (_m *WorkflowArchive) DeleteExpiredWorkflows(ttl time.Duration) error {
+	ret := _m.Called(ttl)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteExpiredWorkflows")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, time.Duration) error); ok {
-		r0 = rf(ctx, ttl)
+	if rf, ok := ret.Get(0).(func(time.Duration) error); ok {
+		r0 = rf(ttl)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -84,17 +82,17 @@ func (_m *WorkflowArchive) DeleteExpiredWorkflows(ctx context.Context, ttl time.
 	return r0
 }
 
-// DeleteWorkflow provides a mock function with given fields: ctx, uid
-func (_m *WorkflowArchive) DeleteWorkflow(ctx context.Context, uid string) error {
-	ret := _m.Called(ctx, uid)
+// DeleteWorkflow provides a mock function with given fields: uid
+func (_m *WorkflowArchive) DeleteWorkflow(uid string) error {
+	ret := _m.Called(uid)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DeleteWorkflow")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
-		r0 = rf(ctx, uid)
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(uid)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -102,9 +100,9 @@ func (_m *WorkflowArchive) DeleteWorkflow(ctx context.Context, uid string) error
 	return r0
 }
 
-// GetWorkflow provides a mock function with given fields: ctx, uid, namespace, name
-func (_m *WorkflowArchive) GetWorkflow(ctx context.Context, uid string, namespace string, name string) (*v1alpha1.Workflow, error) {
-	ret := _m.Called(ctx, uid, namespace, name)
+// GetWorkflow provides a mock function with given fields: uid, namespace, name
+func (_m *WorkflowArchive) GetWorkflow(uid string, namespace string, name string) (*v1alpha1.Workflow, error) {
+	ret := _m.Called(uid, namespace, name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkflow")
@@ -112,19 +110,19 @@ func (_m *WorkflowArchive) GetWorkflow(ctx context.Context, uid string, namespac
 
 	var r0 *v1alpha1.Workflow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) (*v1alpha1.Workflow, error)); ok {
-		return rf(ctx, uid, namespace, name)
+	if rf, ok := ret.Get(0).(func(string, string, string) (*v1alpha1.Workflow, error)); ok {
+		return rf(uid, namespace, name)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string) *v1alpha1.Workflow); ok {
-		r0 = rf(ctx, uid, namespace, name)
+	if rf, ok := ret.Get(0).(func(string, string, string) *v1alpha1.Workflow); ok {
+		r0 = rf(uid, namespace, name)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1alpha1.Workflow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = rf(ctx, uid, namespace, name)
+	if rf, ok := ret.Get(1).(func(string, string, string) error); ok {
+		r1 = rf(uid, namespace, name)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -132,9 +130,9 @@ func (_m *WorkflowArchive) GetWorkflow(ctx context.Context, uid string, namespac
 	return r0, r1
 }
 
-// GetWorkflowForEstimator provides a mock function with given fields: ctx, namespace, requirements
-func (_m *WorkflowArchive) GetWorkflowForEstimator(ctx context.Context, namespace string, requirements []labels.Requirement) (*v1alpha1.Workflow, error) {
-	ret := _m.Called(ctx, namespace, requirements)
+// GetWorkflowForEstimator provides a mock function with given fields: namespace, requirements
+func (_m *WorkflowArchive) GetWorkflowForEstimator(namespace string, requirements []labels.Requirement) (*v1alpha1.Workflow, error) {
+	ret := _m.Called(namespace, requirements)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetWorkflowForEstimator")
@@ -142,19 +140,19 @@ func (_m *WorkflowArchive) GetWorkflowForEstimator(ctx context.Context, namespac
 
 	var r0 *v1alpha1.Workflow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []labels.Requirement) (*v1alpha1.Workflow, error)); ok {
-		return rf(ctx, namespace, requirements)
+	if rf, ok := ret.Get(0).(func(string, []labels.Requirement) (*v1alpha1.Workflow, error)); ok {
+		return rf(namespace, requirements)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, []labels.Requirement) *v1alpha1.Workflow); ok {
-		r0 = rf(ctx, namespace, requirements)
+	if rf, ok := ret.Get(0).(func(string, []labels.Requirement) *v1alpha1.Workflow); ok {
+		r0 = rf(namespace, requirements)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1alpha1.Workflow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, []labels.Requirement) error); ok {
-		r1 = rf(ctx, namespace, requirements)
+	if rf, ok := ret.Get(1).(func(string, []labels.Requirement) error); ok {
+		r1 = rf(namespace, requirements)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -180,9 +178,9 @@ func (_m *WorkflowArchive) IsEnabled() bool {
 	return r0
 }
 
-// ListWorkflows provides a mock function with given fields: ctx, options
-func (_m *WorkflowArchive) ListWorkflows(ctx context.Context, options utils.ListOptions) (v1alpha1.Workflows, error) {
-	ret := _m.Called(ctx, options)
+// ListWorkflows provides a mock function with given fields: options
+func (_m *WorkflowArchive) ListWorkflows(options utils.ListOptions) (v1alpha1.Workflows, error) {
+	ret := _m.Called(options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListWorkflows")
@@ -190,19 +188,19 @@ func (_m *WorkflowArchive) ListWorkflows(ctx context.Context, options utils.List
 
 	var r0 v1alpha1.Workflows
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, utils.ListOptions) (v1alpha1.Workflows, error)); ok {
-		return rf(ctx, options)
+	if rf, ok := ret.Get(0).(func(utils.ListOptions) (v1alpha1.Workflows, error)); ok {
+		return rf(options)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, utils.ListOptions) v1alpha1.Workflows); ok {
-		r0 = rf(ctx, options)
+	if rf, ok := ret.Get(0).(func(utils.ListOptions) v1alpha1.Workflows); ok {
+		r0 = rf(options)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(v1alpha1.Workflows)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, utils.ListOptions) error); ok {
-		r1 = rf(ctx, options)
+	if rf, ok := ret.Get(1).(func(utils.ListOptions) error); ok {
+		r1 = rf(options)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -210,9 +208,9 @@ func (_m *WorkflowArchive) ListWorkflows(ctx context.Context, options utils.List
 	return r0, r1
 }
 
-// ListWorkflowsLabelKeys provides a mock function with given fields: ctx
-func (_m *WorkflowArchive) ListWorkflowsLabelKeys(ctx context.Context) (*v1alpha1.LabelKeys, error) {
-	ret := _m.Called(ctx)
+// ListWorkflowsLabelKeys provides a mock function with no fields
+func (_m *WorkflowArchive) ListWorkflowsLabelKeys() (*v1alpha1.LabelKeys, error) {
+	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListWorkflowsLabelKeys")
@@ -220,19 +218,19 @@ func (_m *WorkflowArchive) ListWorkflowsLabelKeys(ctx context.Context) (*v1alpha
 
 	var r0 *v1alpha1.LabelKeys
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*v1alpha1.LabelKeys, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func() (*v1alpha1.LabelKeys, error)); ok {
+		return rf()
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) *v1alpha1.LabelKeys); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func() *v1alpha1.LabelKeys); ok {
+		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1alpha1.LabelKeys)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -240,9 +238,9 @@ func (_m *WorkflowArchive) ListWorkflowsLabelKeys(ctx context.Context) (*v1alpha
 	return r0, r1
 }
 
-// ListWorkflowsLabelValues provides a mock function with given fields: ctx, key
-func (_m *WorkflowArchive) ListWorkflowsLabelValues(ctx context.Context, key string) (*v1alpha1.LabelValues, error) {
-	ret := _m.Called(ctx, key)
+// ListWorkflowsLabelValues provides a mock function with given fields: key
+func (_m *WorkflowArchive) ListWorkflowsLabelValues(key string) (*v1alpha1.LabelValues, error) {
+	ret := _m.Called(key)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ListWorkflowsLabelValues")
@@ -250,19 +248,19 @@ func (_m *WorkflowArchive) ListWorkflowsLabelValues(ctx context.Context, key str
 
 	var r0 *v1alpha1.LabelValues
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*v1alpha1.LabelValues, error)); ok {
-		return rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(string) (*v1alpha1.LabelValues, error)); ok {
+		return rf(key)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *v1alpha1.LabelValues); ok {
-		r0 = rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(string) *v1alpha1.LabelValues); ok {
+		r0 = rf(key)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v1alpha1.LabelValues)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, key)
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(key)
 	} else {
 		r1 = ret.Error(1)
 	}
